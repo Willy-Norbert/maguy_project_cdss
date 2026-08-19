@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  DOCTOR
+  NURSE
+  ADMIN
+}
+
+enum RiskCategory {
+  LOW
+  MODERATE
+  HIGH
+}
+
+enum AssessmentStatus {
+  ROUTINE        // LOW risk — no doctor review needed
+  PENDING_REVIEW // MODERATE/HIGH — awaiting doctor
+  REVIEWED       // Doctor has reviewed and recorded outcome
+}
+
+enum ClinicalOutcome {
+  REFERRED_TO_SPECIALIST
+  ADMITTED
+  TREATMENT_STARTED
+  FOLLOW_UP_SCHEDULED
+  NO_ACTION_REQUIRED
+}
+
+model User {
+  id              Int          @id @default(autoincrement())
+  name            String
+  username        String       @unique
+  password        String
+  role            Role
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  assessments     Assessment[] @relation("AssessedBy")
+  reviewedCases   Assessment[] @relation("ReviewedBy")
+}
+
+model Patient {
+  id                  Int          @id @default(autoincrement())
+  patientCode         String       @unique
+  name                String
+  age                 Int
+  gestationalAge      Int
+  weight              Float
+  height              Float
+  bmi                 Float
+  contact             String?
+  medicalHistory      String?
+  previousPregnancies Int          @default(0)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  assessments         Assessment[]
+}
+
+model Assessment {
+  id                    Int               @id @default(autoincrement())
+  patient               Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patientId             Int
+  systolicBP            Int
+  diastolicBP           Int
+  map                   Float
+  urineProtein          Int
+  bloodGlucose          Float?
+  previousPreeclampsia  Boolean           @default(false)
+  diabetes              Boolean           @default(false)
+  chronicHypertension   Boolean           @default(false)
+  kidneyDisease         Boolean           @default(false)
+  familyHistory         Boolean           @default(false)
+  labResults            String?
+  riskScore             Int
+  riskCategory          RiskCategory
+  contributingFactors   String[]
+  recommendations       String[]
+  status                AssessmentStatus  @default(ROUTINE)
+  reviewedBy            User?             @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  reviewedById          Int?
+  reviewedAt            DateTime?
+  doctorNotes           String?
+  clinicalOutcome       ClinicalOutcome?
+  assessedBy            User              @relation("AssessedBy", fields: [assessedById], references: [id])
+  assessedById          Int
+  assessmentDate        DateTime          @default(now())
+}
