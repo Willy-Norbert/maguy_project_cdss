@@ -75,17 +75,17 @@ const calculateRisk = (data) => {
   if (riskScore >= 60) {
     riskCategory = 'HIGH';
     recommendations = [
-      'Refer to obstetric specialist',
+      'Refer to obstetric specialist immediately',
       'Schedule weekly monitoring',
-      'Repeat laboratory tests',
+      'Repeat laboratory tests (FBC, LFTs, Creatinine)',
       'Consider preventive treatment according to clinical guidelines'
     ];
-  } else if (riskScore >= 30) {
+  } else if (riskScore >= 40) {
     riskCategory = 'MODERATE';
     recommendations = [
       'Increase monitoring frequency (every 1–2 weeks)',
       'Repeat blood pressure and urine protein tests',
-      'Counsel patient on warning signs',
+      'Counsel patient on preeclampsia warning signs',
       'Reassess at next antenatal visit'
     ];
   } else {

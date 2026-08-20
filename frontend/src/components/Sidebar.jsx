@@ -19,8 +19,24 @@ const Sidebar = ({ pendingCount = 0 }) => {
       </div>
 
       <nav className="nav-links" style={{ flex: 1, overflowY: 'auto' }}>
+        {/* === ADMIN: Administration first (at the top) === */}
+        {user?.role === 'ADMIN' && (
+          <>
+            <div className="sidebar-section-label">Administration</div>
+            <NavLink to="/" className={navLinkClass} end>
+              <LayoutDashboard size={16} /> Overview
+            </NavLink>
+            <NavLink to="/admin/users" className={navLinkClass}>
+              <Settings size={16} /> User Management
+            </NavLink>
+            <NavLink to="/admin/report" className={navLinkClass}>
+              <ClipboardList size={16} /> System Report
+            </NavLink>
+          </>
+        )}
+
         {/* === NURSE + DOCTOR === */}
-        {(user?.role === 'NURSE' || user?.role === 'DOCTOR' || user?.role === 'ADMIN') && (
+        {(user?.role === 'NURSE' || user?.role === 'DOCTOR') && (
           <>
             <div className="sidebar-section-label">Clinical</div>
             <NavLink to="/" className={navLinkClass} end>
@@ -38,26 +54,29 @@ const Sidebar = ({ pendingCount = 0 }) => {
           </>
         )}
 
-        {/* === DOCTOR ONLY === */}
+        {/* === ADMIN: Clinical section (below Administration) === */}
+        {user?.role === 'ADMIN' && (
+          <>
+            <div className="sidebar-section-label">Clinical</div>
+            <NavLink to="/patients" className={navLinkClass}>
+              <Users size={16} /> Patients
+            </NavLink>
+            <NavLink to="/patients/new" className={navLinkClass}>
+              <UserPlus size={16} /> Register Patient
+            </NavLink>
+            <NavLink to="/reports" className={navLinkClass}>
+              <FileText size={16} /> Reports
+            </NavLink>
+          </>
+        )}
+
+        {/* === DOCTOR + ADMIN: Review Queue === */}
         {(user?.role === 'DOCTOR' || user?.role === 'ADMIN') && (
           <>
             <div className="sidebar-section-label">Review Queue</div>
             <NavLink to="/review-queue" className={navLinkClass}>
               <AlertCircle size={16} /> Pending Review
               {pendingCount > 0 && <span className="badge-count">{pendingCount}</span>}
-            </NavLink>
-          </>
-        )}
-
-        {/* === ADMIN ONLY === */}
-        {user?.role === 'ADMIN' && (
-          <>
-            <div className="sidebar-section-label">Administration</div>
-            <NavLink to="/" className={navLinkClass} end>
-              <LayoutDashboard size={16} /> Overview
-            </NavLink>
-            <NavLink to="/admin/users" className={navLinkClass}>
-              <Settings size={16} /> User Management
             </NavLink>
           </>
         )}

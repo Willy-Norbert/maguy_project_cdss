@@ -13,6 +13,7 @@ import AssessmentResult from './pages/AssessmentResult';
 import Reports from './pages/Reports';
 import AdminUsers from './pages/AdminUsers';
 import ReviewQueue from './pages/ReviewQueue';
+import ReportGenerator from './pages/ReportGenerator';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -38,7 +39,7 @@ const AppRoutes = () => (
     
     <Route path="/" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
     
-    {/* Clinical Routes - Block Admin */}
+    {/* Clinical Routes */}
     <Route path="/patients" element={<ProtectedRoute allowedRoles={['DOCTOR', 'NURSE', 'ADMIN']}><Patients /></ProtectedRoute>} />
     <Route path="/patients/new" element={<ProtectedRoute allowedRoles={['DOCTOR', 'NURSE', 'ADMIN']}><AddPatient /></ProtectedRoute>} />
     <Route path="/patients/:id" element={<ProtectedRoute allowedRoles={['DOCTOR', 'NURSE', 'ADMIN']}><PatientDetail /></ProtectedRoute>} />
@@ -52,6 +53,7 @@ const AppRoutes = () => (
 
     {/* Admin Only Routes */}
     <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
+    <Route path="/admin/report" element={<ProtectedRoute allowedRoles={['ADMIN']}><ReportGenerator /></ProtectedRoute>} />
   </Routes>
 );
 

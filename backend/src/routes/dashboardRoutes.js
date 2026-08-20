@@ -101,4 +101,48 @@ router.get('/stats', authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/dashboard/pending-queue
+ * Dedicated endpoint for Review Queue page — accessible to DOCTOR and ADMIN.
+ * Returns ALL PENDING_REVIEW assessments sorted by risk severity (HIGH first) then date.
+ */
+const { requireRole } = require('../middleware/authMiddleware');
+router.get('/pending-queue', authMiddleware, requireRole(['DOCTOR', 'ADMIN']), async (req, res) => {
+  try {
+    const getRiskFromScore = (score) => {
+      if (score >= 60) return 'HIGH';
+      if (score >= 40) return 'MODERATE';
+      return 'LOW';
+    };
+
+    const assessments = await prisma.assessment.findMany({
+      where: { status: 'PENDING_REVIEW' },
+      orderBy: [
+        { riskScore: 'desc' },       // highest risk score first
+        { assessmentDate: 'asc' }    // then oldest first (longest waiting)
+      ],
+      include: {
+        patient: {
+          select: { id: true, name: true, patientCode: true, age: true, gestationalAge: true }
+        },
+        assessedBy: { select: { name: true, role: true } }
+      }
+    });
+
+    // Recompute riskCategory from live score
+    const enriched = assessments.map(a => ({
+      ...a,
+      riskCategory: getRiskFromScore(a.riskScore)
+    }));
+
+    res.json({
+      total: enriched.length,
+      queue: enriched
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch pending review queue' });
+  }
+});
+
 module.exports = router;

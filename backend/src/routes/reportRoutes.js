@@ -48,7 +48,38 @@ router.patch('/assessment/:id/review', authMiddleware, requireRole(['DOCTOR', 'A
   }
 });
 
-// High-risk list — Admin blocked
+// All assessments — Full registry with score-based live risk label
+router.get('/all-assessments', authMiddleware, requireRole(['DOCTOR', 'NURSE', 'ADMIN']), async (req, res) => {
+  try {
+    const assessments = await prisma.assessment.findMany({
+      orderBy: { assessmentDate: 'desc' },
+      include: {
+        patient: { select: { name: true, patientCode: true, gestationalAge: true, age: true } },
+        assessedBy: { select: { name: true } },
+        reviewedBy: { select: { name: true } }
+      }
+    });
+
+    // Re-derive riskCategory from score at query time so it's always correct
+    const getRiskFromScore = (score) => {
+      if (score >= 60) return 'HIGH';
+      if (score >= 40) return 'MODERATE';
+      return 'LOW';
+    };
+
+    const enriched = assessments.map(a => ({
+      ...a,
+      riskCategory: getRiskFromScore(a.riskScore)   // override stored value with live calculation
+    }));
+
+    res.json(enriched);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch assessments' });
+  }
+});
+
+// High-risk list
 router.get('/high-risk', authMiddleware, requireRole(['DOCTOR', 'NURSE', 'ADMIN']), async (req, res) => {
   try {
     const assessments = await prisma.assessment.findMany({
@@ -91,6 +122,67 @@ router.get('/trends', authMiddleware, async (req, res) => {
     res.json(Object.values(trendsMap));
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch trends' });
+  }
+});
+
+// System Report — ADMIN only
+router.get('/system-report', authMiddleware, requireRole(['ADMIN']), async (req, res) => {
+  try {
+    const totalPatients = await prisma.patient.count();
+    const totalAssessments = await prisma.assessment.count();
+    const totalUsers = await prisma.user.count();
+    const activeUsers = await prisma.user.count({ where: { isActive: true } });
+
+    const riskCounts = await prisma.assessment.groupBy({
+      by: ['riskCategory'],
+      _count: { riskCategory: true }
+    });
+    const riskSummary = { HIGH: 0, MODERATE: 0, LOW: 0 };
+    riskCounts.forEach(r => { riskSummary[r.riskCategory] = r._count.riskCategory; });
+
+    const statusCounts = await prisma.assessment.groupBy({
+      by: ['status'],
+      _count: { status: true }
+    });
+    const statusSummary = { ROUTINE: 0, PENDING_REVIEW: 0, REVIEWED: 0 };
+    statusCounts.forEach(s => { statusSummary[s.status] = s._count.status; });
+
+    const recentAssessments = await prisma.assessment.findMany({
+      take: 50,
+      orderBy: { assessmentDate: 'desc' },
+      include: {
+        patient: { select: { name: true, patientCode: true, gestationalAge: true, age: true } },
+        assessedBy: { select: { name: true } },
+        reviewedBy: { select: { name: true } }
+      }
+    });
+
+    const allPatients = await prisma.patient.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: {
+        assessments: {
+          take: 1,
+          orderBy: { assessmentDate: 'desc' },
+          select: { riskCategory: true, riskScore: true, status: true, assessmentDate: true }
+        }
+      }
+    });
+
+    const users = await prisma.user.findMany({
+      select: { id: true, name: true, username: true, role: true, isActive: true, createdAt: true }
+    });
+
+    res.json({
+      generatedAt: new Date().toISOString(),
+      summary: { totalPatients, totalAssessments, totalUsers, activeUsers, riskSummary, statusSummary },
+      recentAssessments,
+      patients: allPatients,
+      users
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to generate system report' });
   }
 });
 
