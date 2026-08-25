@@ -128,26 +128,44 @@ router.get('/trends', authMiddleware, async (req, res) => {
 // System Report — ADMIN only
 router.get('/system-report', authMiddleware, requireRole(['ADMIN']), async (req, res) => {
   try {
-    const totalPatients = await prisma.patient.count();
-    const totalAssessments = await prisma.assessment.count();
+    const { period } = req.query;
+    let wherePatient = undefined;
+    let whereAssessment = undefined;
+
+    if (period && period !== 'all') {
+      const date = new Date();
+      if (period === 'daily') date.setDate(date.getDate() - 1);
+      else if (period === 'weekly') date.setDate(date.getDate() - 7);
+      else if (period === 'monthly') date.setMonth(date.getMonth() - 1);
+      else if (period === 'yearly') date.setFullYear(date.getFullYear() - 1);
+      
+      wherePatient = { createdAt: { gte: date } };
+      whereAssessment = { assessmentDate: { gte: date } };
+    }
+
+    const totalPatients = await prisma.patient.count(wherePatient ? { where: wherePatient } : undefined);
+    const totalAssessments = await prisma.assessment.count(whereAssessment ? { where: whereAssessment } : undefined);
     const totalUsers = await prisma.user.count();
     const activeUsers = await prisma.user.count({ where: { isActive: true } });
 
     const riskCounts = await prisma.assessment.groupBy({
       by: ['riskCategory'],
-      _count: { riskCategory: true }
+      _count: { riskCategory: true },
+      ...(whereAssessment ? { where: whereAssessment } : {})
     });
     const riskSummary = { HIGH: 0, MODERATE: 0, LOW: 0 };
     riskCounts.forEach(r => { riskSummary[r.riskCategory] = r._count.riskCategory; });
 
     const statusCounts = await prisma.assessment.groupBy({
       by: ['status'],
-      _count: { status: true }
+      _count: { status: true },
+      ...(whereAssessment ? { where: whereAssessment } : {})
     });
     const statusSummary = { ROUTINE: 0, PENDING_REVIEW: 0, REVIEWED: 0 };
     statusCounts.forEach(s => { statusSummary[s.status] = s._count.status; });
 
     const recentAssessments = await prisma.assessment.findMany({
+      ...(whereAssessment ? { where: whereAssessment } : {}),
       take: 50,
       orderBy: { assessmentDate: 'desc' },
       include: {
@@ -158,6 +176,7 @@ router.get('/system-report', authMiddleware, requireRole(['ADMIN']), async (req,
     });
 
     const allPatients = await prisma.patient.findMany({
+      ...(wherePatient ? { where: wherePatient } : {}),
       orderBy: { createdAt: 'desc' },
       take: 100,
       include: {

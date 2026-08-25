@@ -436,12 +436,13 @@ const ReportGenerator = () => {
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState(null);
   const [error, setError] = useState('');
+  const [period, setPeriod] = useState('all');
 
   const fetchReport = async () => {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.get('/reports/system-report');
+      const { data } = await api.get(`/reports/system-report?period=${period}`);
       setReportData(data);
     } catch (err) {
       setError('Failed to fetch report data. Please try again.');
@@ -474,6 +475,31 @@ const ReportGenerator = () => {
         <p className="text-muted mb-4" style={{ fontSize: '13px' }}>
           Pulls live data from the database including all patients, assessments, risk distribution, workflow status, and system users.
         </p>
+        
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Report Period</label>
+          <select 
+            value={period} 
+            onChange={(e) => setPeriod(e.target.value)}
+            style={{ 
+              padding: '10px 14px', 
+              borderRadius: '8px', 
+              border: '1.5px solid var(--border)', 
+              background: 'var(--bg)', 
+              color: 'var(--fg)',
+              width: '220px',
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="all">All Time</option>
+            <option value="daily">Daily (Last 24h)</option>
+            <option value="weekly">Weekly (Last 7 days)</option>
+            <option value="monthly">Monthly (Last 30 days)</option>
+            <option value="yearly">Yearly (Last 365 days)</option>
+          </select>
+        </div>
+
         <button
           className="btn btn-primary"
           onClick={fetchReport}
